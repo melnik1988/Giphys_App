@@ -1,5 +1,6 @@
 using Giphys_App.Interface;
 using Giphys_App.Services;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+IConfiguration configuration = app.Configuration;
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -25,7 +27,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseCors(
-        options => options.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader().AllowCredentials()
+        options => options.WithOrigins(configuration.GetSection("AppSettings:Origin").Value).AllowAnyMethod().AllowAnyHeader().AllowCredentials()
     );
 
 app.UseHttpsRedirection();
