@@ -33,45 +33,21 @@ namespace Giphy_App.Controllers
             List<GiphyURL> giphys_json = new List<GiphyURL>();
 
             string[] subs = value.Split(Delimiter);
+            subs = subs.Distinct().ToArray();
 
             try
             {
-                foreach (string str in subs)
+                // Parallel
+                var tasks = new List<Task>();
+                foreach (var s in subs)
                 {
-
-                    string full_url = $"{url}api_key={apiKey.Value}&q={str}&limit=25&offset=0&rating=g&lang=en";
-
-                    if (fileService.CheckIfFileExist(str))
+                    tasks.Add(Task.Run(async () =>
                     {
-                        string json = fileService.ReadFromFile(str);
-                        giphys_json.Add(JsonConvert.DeserializeObject<GiphyURL>(json));
-                    }
-                    else
-                    {
-
-                        using (var httpClient = new HttpClient())
-                        {
-                            using (var response = await httpClient.GetAsync(full_url))
-                            {
-                                string apiResponse = await response.Content.ReadAsStringAsync();
-
-                                var giphys = JsonConvert.DeserializeObject<Giphys>(apiResponse);
-
-                                var listUrl = helperService.takeOutURL(giphys, str);
-
-                                string json = JsonConvert.SerializeObject(listUrl);
-
-                                if (!fileService.CheckIfFileExist(str))
-                                {
-                                    fileService.WriteToFile(json, str);
-                                }
-
-                                giphys_json.Add(listUrl);
-                            }
-                        }
-
-                    }
+                        await GetGiphys(apiKey, giphys_json, s);
+                    }));
                 }
+                await Task.WhenAll(tasks);
+
             }
             catch (Exception ex)
             {
@@ -79,6 +55,42 @@ namespace Giphy_App.Controllers
             }
 
             return JsonConvert.SerializeObject(giphys_json);
+        }
+
+        private async Task GetGiphys(IConfigurationSection apiKey, List<GiphyURL> giphys_json, string str)
+        {
+            string full_url = $"{url}api_key={apiKey.Value}&q={str}&limit=25&offset=0&rating=g&lang=en";
+
+            if (fileService.CheckIfFileExist(str))
+            {
+                string json = fileService.ReadFromFile(str);
+                giphys_json.Add(JsonConvert.DeserializeObject<GiphyURL>(json));
+            }
+            else
+            {
+
+                using (var httpClient = new HttpClient())
+                {
+                    using (var response = await httpClient.GetAsync(full_url))
+                    {
+                        string apiResponse = await response.Content.ReadAsStringAsync();
+
+                        var giphys = JsonConvert.DeserializeObject<Giphys>(apiResponse);
+
+                        var listUrl = helperService.takeOutURL(giphys, str);
+
+                        string json = JsonConvert.SerializeObject(listUrl);
+
+                        if (!fileService.CheckIfFileExist(str))
+                        {
+                            fileService.WriteToFile(json, str);
+                        }
+
+                        giphys_json.Add(listUrl);
+                    }
+                }
+
+            }
         }
 
         [HttpGet("list/")]
